@@ -30,6 +30,8 @@
 --   UP,DOWN,LEFT,RIGHT arrows : Movements
 --   SPACE,CTRL  : Jump
 --
+-- Player 2 keys not working?
+--
 -- Joystick support.
 -- 
 -- 
