@@ -261,14 +261,34 @@ wire [1:0] b;
 
 
 reg ce_pix;
+//always @(posedge clk_48) begin
+//       reg old_clk;
+//
+//       old_clk <= clk_sys;
+//       ce_pix <= old_clk & ~clk_sys;
+//end
 always @(posedge clk_48) begin
-        reg old_clk;
+       reg old_clk;
 
-        old_clk <= clk_sys;
-        ce_pix <= old_clk & ~clk_sys;
+       old_clk <= ce_vid;
+       ce_pix <= old_clk & ~ce_vid;
 end
+//always @(posedge clk_sys) begin
+///       reg old_clk;
+//
+ //      old_clk <= ce_vid;
+  //     ce_pix <= old_clk & ~ce_vid;
+//end
 
-arcade_rotate_fx #(506,240,8,0) arcade_video
+//always @(posedge clk_sys) begin
+//        reg old_clk;
+//
+//        old_clk <= ce_vid;
+//        ce_pix <= old_clk & ~ce_vid;
+//end
+//arcade_rotate_fx #(506,240,8,0) arcade_video
+//arcade_rotate_fx #(515,240,8,0) arcade_video
+arcade_rotate_fx #(524,240,8,0) arcade_video
 (
         .*,
 
