@@ -259,13 +259,6 @@ wire [1:0] b;
 
 
 reg ce_pix;
-//always @(posedge clk_48) begin
-//       reg old_clk;
-//
-//       old_clk <= clk_sys;
-//       ce_pix <= old_clk & ~clk_sys;
-//end
-//reg ce_pix;
 always @(posedge clk_48) begin
         reg [1:0] div;
 
