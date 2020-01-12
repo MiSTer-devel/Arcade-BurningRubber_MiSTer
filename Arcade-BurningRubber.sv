@@ -100,8 +100,8 @@ assign HDMI_ARY = status[1] ? 8'd9  : status[2] ? 8'd3 : 8'd4;
 `include "build_id.v" 
 localparam CONF_STR = {
 	"A.BRUBBR;;",
-	"O1,Aspect Ratio,Original,Wide;",
-	"O2,Orientation,Vert,Horz;",
+	"H0O1,Aspect Ratio,Original,Wide;",
+	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
 	"O8,Lives,3,5;",
@@ -196,65 +196,60 @@ always @(posedge clk_sys) begin
 	
 	if(old_state != ps2_key[10]) begin
 		casex(ps2_key[8:0])
-			9'hX75: btn_up          <= pressed; // up
-			9'hX72: btn_down        <= pressed; // down
-			9'hX6B: btn_left        <= pressed; // left
-			9'hX74: btn_right       <= pressed; // right
-			9'h029: btn_fire        <= pressed; // space
-			9'hX14: btn_fire        <= pressed; // ctrl
+			9'hX75: btn_up      <= pressed; // up
+			9'hX72: btn_down    <= pressed; // down
+			9'hX6B: btn_left    <= pressed; // left
+			9'hX74: btn_right   <= pressed; // right
+			9'h029: btn_fire    <= pressed; // space
+			9'hX14: btn_fire    <= pressed; // ctrl
 
-			9'h005: btn_one_player  <= pressed; // F1
-			9'h006: btn_two_players <= pressed; // F2
+			9'h005: btn_start_1 <= pressed; // F1
+			9'h006: btn_start_2 <= pressed; // F2
+
 			// JPAC/IPAC/MAME Style Codes
-			'h016: btn_start_1     <= pressed; // 1
-			'h01E: btn_start_2     <= pressed; // 2
-			'h02E: btn_coin_1      <= pressed; // 5
-			'h036: btn_coin_2      <= pressed; // 6
-			'h02D: btn_up_2        <= pressed; // R
-			'h02B: btn_down_2      <= pressed; // F
-			'h023: btn_left_2      <= pressed; // D
-			'h034: btn_right_2     <= pressed; // G
-			'h01C: btn_fire_2      <= pressed; // A
+			'h016: btn_start_1  <= pressed; // 1
+			'h01E: btn_start_2  <= pressed; // 2
+			'h02E: btn_coin_1   <= pressed; // 5
+			'h036: btn_coin_2   <= pressed; // 6
+			'h02D: btn_up_2     <= pressed; // R
+			'h02B: btn_down_2   <= pressed; // F
+			'h023: btn_left_2   <= pressed; // D
+			'h034: btn_right_2  <= pressed; // G
+			'h01C: btn_fire_2   <= pressed; // A
 		endcase
 	end
 end
 
-reg btn_up    = 0;
-reg btn_down  = 0;
-reg btn_right = 0;
-reg btn_left  = 0;
-reg btn_fire  = 0;
-reg btn_one_player  = 0;
-reg btn_two_players = 0;
+reg btn_up      = 0;
+reg btn_down    = 0;
+reg btn_right   = 0;
+reg btn_left    = 0;
+reg btn_fire    = 0;
+reg btn_start_1 = 0;
+reg btn_start_2 = 0;
+reg btn_coin_1  = 0;
+reg btn_coin_2  = 0;
+reg btn_up_2    = 0;
+reg btn_down_2  = 0;
+reg btn_left_2  = 0;
+reg btn_right_2 = 0;
+reg btn_fire_2  = 0;
 
-reg btn_start_1=0;
-reg btn_start_2=0;
-reg btn_coin_1=0;
-reg btn_coin_2=0;
-reg btn_up_2=0;
-reg btn_down_2=0;
-reg btn_left_2=0;
-reg btn_right_2=0;
-reg btn_fire_2=0;
+wire m_up     = btn_up      | joy[3];
+wire m_down   = btn_down    | joy[2];
+wire m_left   = btn_left    | joy[1];
+wire m_right  = btn_right   | joy[0];
+wire m_fire   = btn_fire    | joy[4];
 
-wire no_rotate = 1; //status[2] & ~direct_video;
+wire m_up_2   = btn_up_2    | joy[3];
+wire m_down_2 = btn_down_2  | joy[2];
+wire m_left_2 = btn_left_2  | joy[1];
+wire m_right_2= btn_right_2 | joy[0];
+wire m_fire_2 = btn_fire_2  | joy[4];
 
-wire m_up     = no_rotate ? btn_left  | joy[1] : btn_up    | joy[3];
-wire m_down   = no_rotate ? btn_right | joy[0] : btn_down  | joy[2];
-wire m_left   = no_rotate ? btn_down  | joy[2] : btn_left  | joy[1];
-wire m_right  = no_rotate ? btn_up    | joy[3] : btn_right | joy[0];
-wire m_fire   = btn_fire | joy[4];
-
-wire m_up_2     = no_rotate ? btn_left_2  | joy[1] : btn_up_2    | joy[3];
-wire m_down_2   = no_rotate ? btn_right_2 | joy[0] : btn_down_2  | joy[2];
-wire m_left_2   = no_rotate ? btn_down_2  | joy[2] : btn_left_2  | joy[1];
-wire m_right_2  = no_rotate ? btn_up_2    | joy[3] : btn_right_2 | joy[0];
-wire m_fire_2  = btn_fire_2|joy[4];
-
-
-wire m_start1 = btn_one_player  | joy[5];
-wire m_start2 = btn_two_players | joy[6];
-wire m_coin   = m_start1 | m_start2| joy[7];
+wire m_start1 = btn_start_1 | joy[5];
+wire m_start2 = btn_start_2 | joy[6];
+wire m_coin   = btn_coin_1  | btn_coin_2 | joy[7];
 
 wire hblank, vblank;
 wire ce_vid;
@@ -262,21 +257,23 @@ wire hs, vs;
 wire [2:0] r,g;
 wire [1:0] b;
 
-arcade_rotate_fx #(253,240,8) arcade_video
+wire no_rotate = status[2] | direct_video;
+
+arcade_video #(253,240,8) arcade_video
 (
-        .*,
+	.*,
 
-        .clk_video(clk_48),
-        .ce_pix(ce_vid),
+	.clk_video(clk_48),
+	.ce_pix(ce_vid),
 
-        .RGB_in({r,g,b}),
-        .HBlank(hblank),
-        .VBlank(vblank),
-        .HSync(hs),
-        .VSync(vs),
-        .rotate_ccw(0),
+	.RGB_in({r,g,b}),
+	.HBlank(hblank),
+	.VBlank(vblank),
+	.HSync(hs),
+	.VSync(vs),
+	.rotate_ccw(0),
 
-        .fx(status[5:3])
+	.fx(status[5:3])
 );
 
 
@@ -306,9 +303,9 @@ burnin_rubber burnin_rubber
 
 	.audio_out(audio),
 
-	.start2(m_start2|btn_start_2),
-	.start1(m_start1|btn_start_1),
-	.coin1(m_coin|btn_coin_1|btn_coin_2),
+	.start2(m_start2),
+	.start1(m_start1),
+	.coin1(m_coin),
 
 	.fire1(m_fire),
 	.right1(m_right),
@@ -324,7 +321,6 @@ burnin_rubber burnin_rubber
 	
 	.dip_sw1(m_dip_sw1),
 	.dip_sw2(m_dip_sw2)
-
 );
 
 endmodule
