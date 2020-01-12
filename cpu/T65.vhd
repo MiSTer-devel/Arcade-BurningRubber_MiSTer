@@ -97,7 +97,7 @@ end T65;
 architecture rtl of T65 is
 
 	-- Registers
-	signal ABC, X, Y, D       : std_logic_vector(15 downto 0);
+	signal ABC, X, Y          : std_logic_vector(15 downto 0);
 	signal P, AD, DL          : std_logic_vector(7 downto 0) :=  x"00";
 	signal BAH                : std_logic_vector(7 downto 0);
 	signal BAL                : std_logic_vector(8 downto 0);
@@ -235,7 +235,6 @@ begin
 			PC <= (others => '0');  -- Program Counter
 			IR <= "00000000";
 			S <= (others => '0');       -- Dummy !!!!!!!!!!!!!!!!!!!!!
-			D <= (others => '0');
 			PBR <= (others => '0');
 			DBR <= (others => '0');
 
@@ -254,7 +253,6 @@ begin
 			if (really_rdy = '1') then
 				R_W_n_i <= not Write or RstCycle;
 
-				D <= (others => '1');   -- Dummy
 				PBR <= (others => '1'); -- Dummy
 				DBR <= (others => '1'); -- Dummy
 				EF_i <= '0';    -- Dummy
@@ -400,7 +398,7 @@ begin
 				end if;
 				P(Flag_1) <= '1';
 
-				B_o     <= P(Flag_B);
+				--B_o     <= P(Flag_B);
 				SO_n_o <= SO_n;
 				IRQ_n_o <= IRQ_n;
 				NMI_n_o <= NMI_n;

@@ -215,7 +215,6 @@ always @(posedge clk_sys) begin
 			'h023: btn_left_2      <= pressed; // D
 			'h034: btn_right_2     <= pressed; // G
 			'h01C: btn_fire_2      <= pressed; // A
-			'h02C: btn_test        <= pressed; // T
 		endcase
 	end
 end
@@ -237,10 +236,8 @@ reg btn_down_2=0;
 reg btn_left_2=0;
 reg btn_right_2=0;
 reg btn_fire_2=0;
-reg btn_test=0;
 
-wire no_rotate = status[2] & ~direct_video;
-
+wire no_rotate = 1; //status[2] & ~direct_video;
 
 wire m_up     = no_rotate ? btn_left  | joy[1] : btn_up    | joy[3];
 wire m_down   = no_rotate ? btn_right | joy[0] : btn_down  | joy[2];
@@ -260,27 +257,17 @@ wire m_start2 = btn_two_players | joy[6];
 wire m_coin   = m_start1 | m_start2| joy[7];
 
 wire hblank, vblank;
-//wire ce_vid = clk_sys;
+wire ce_vid;
 wire hs, vs;
 wire [2:0] r,g;
 wire [1:0] b;
 
-
-reg ce_pix;
-always @(posedge clk_48) begin
-        reg [1:0] div;
-
-        div <= div + 1'd1;
-        ce_pix <= !div;
-end
-
-//arcade_rotate_fx #(262,240,8,0) arcade_video
-arcade_rotate_fx #(524,240,8,0) arcade_video
+arcade_rotate_fx #(253,240,8) arcade_video
 (
         .*,
 
         .clk_video(clk_48),
-        //.ce_pix(ce_vid),
+        .ce_pix(ce_vid),
 
         .RGB_in({r,g,b}),
         .HBlank(hblank),
@@ -289,7 +276,7 @@ arcade_rotate_fx #(524,240,8,0) arcade_video
         .VSync(vs),
         .rotate_ccw(0),
 
-        .fx(status[5:3]),
+        .fx(status[5:3])
 );
 
 

@@ -189,7 +189,6 @@ architecture syn of burnin_rubber is
 	signal bg_bits_skew_2: std_logic_vector( 2 downto 0);
 	signal bg_bits_skew_3: std_logic_vector( 2 downto 0);
 	signal bg_bits_skew_4: std_logic_vector( 2 downto 0);
-	signal bg_bits_skew_5: std_logic_vector( 2 downto 0);
 	
 	-- misc
 	signal raz_nmi_we : std_logic;
@@ -240,16 +239,18 @@ begin
 		hcnt  <= (others => '0');
 		vcnt  <= (others => '0');
 	else 
-		if rising_edge(clock_12) and clock_6 = '1' then
-			hcnt <= hcnt + '1';
-			if hcnt = 383 then
-				hcnt <= (others => '0');
-				if vcnt = 260 then -- total should be 272 from Bump&Jump schematics !
-					vcnt <= (others => '0');
-				else
-					vcnt <= vcnt + '1';
+		if rising_edge(clock_12) then
+			if clock_6 = '1' then
+				hcnt <= hcnt + '1';
+				if hcnt = 383 then
+					hcnt <= (others => '0');
+					if vcnt = 260 then -- total should be 272 from Bump&Jump schematics !
+						vcnt <= (others => '0');
+					else
+						vcnt <= vcnt + '1';
+					end if;
 				end if;
-			end if;			
+			end if;
 		end if;
 
 	end if;
@@ -392,56 +393,56 @@ fg_ram_addr <= cpu_addr(4 downto 0) & cpu_addr(9 downto 5)   when "00",    -- cp
 -- manage sprite line buffer address
 process (clock_12)
 begin
-	if rising_edge(clock_12) and clock_6 = '1' then
-		
-		if  hcnt(3 downto 0) = "0000" then
-			sprite_attr <= fg_ram_low_do(2 downto 0);
-		end if;
-		if  hcnt(3 downto 0) = "0100" then
-			sprite_tile <= fg_ram_low_do(7 downto 0);
-		end if;
-		if  hcnt(3 downto 0) = "1000" then
-			if sprite_attr(1) = '0' then
-				sprite_line <=  vcnt_flip(7 downto 0) - 1 + fg_ram_low_do(7 downto 0);
-			else
-				sprite_line <= (vcnt_flip(7 downto 0) - 1 + fg_ram_low_do(7 downto 0)) xor X"0F"; -- flip V
+	if rising_edge(clock_12) then
+		if clock_6 = '1' then
+			if  hcnt(3 downto 0) = "0000" then
+				sprite_attr <= fg_ram_low_do(2 downto 0);
 			end if;
-		end if;
-		
-		if hcnt(2 downto 0) = "100" then
-			hcnt8_r <= hcnt(8);
-			fg_grphx_addr_early <= fg_ram_high_do & fg_ram_low_do & vcnt_flip(2 downto 0); -- fg_ram_low_do(7) = '1' => low priority foreground
-			if hcnt8_r = '1' then
-				fg_grphx_addr <= sprite_tile & not (sprite_attr(2) xor hcnt_flip(3) xor cocktail_flip) & sprite_line(3 downto 0);
-				if hcnt(3) = '1' then
-					if (sprite_line(7 downto 4) = "1111") and (sprite_attr(0) = '1') then
-						display_tile <= '1';
-					else 
-						display_tile <= '0';					
-					end if;
+			if  hcnt(3 downto 0) = "0100" then
+				sprite_tile <= fg_ram_low_do(7 downto 0);
+			end if;
+			if  hcnt(3 downto 0) = "1000" then
+				if sprite_attr(1) = '0' then
+					sprite_line <=  vcnt_flip(7 downto 0) - 1 + fg_ram_low_do(7 downto 0);
+				else
+					sprite_line <= (vcnt_flip(7 downto 0) - 1 + fg_ram_low_do(7 downto 0)) xor X"0F"; -- flip V
 				end if;
-			else
-				fg_grphx_addr <= fg_grphx_addr_early;
-				display_tile <= '1';
 			end if;
-		end if;
+			
+			if hcnt(2 downto 0) = "100" then
+				hcnt8_r <= hcnt(8);
+				fg_grphx_addr_early <= fg_ram_high_do & fg_ram_low_do & vcnt_flip(2 downto 0); -- fg_ram_low_do(7) = '1' => low priority foreground
+				if hcnt8_r = '1' then
+					fg_grphx_addr <= sprite_tile & not (sprite_attr(2) xor hcnt_flip(3) xor cocktail_flip) & sprite_line(3 downto 0);
+					if hcnt(3) = '1' then
+						if (sprite_line(7 downto 4) = "1111") and (sprite_attr(0) = '1') then
+							display_tile <= '1';
+						else 
+							display_tile <= '0';					
+						end if;
+					end if;
+				else
+					fg_grphx_addr <= fg_grphx_addr_early;
+					display_tile <= '1';
+				end if;
+			end if;
 
-		if hcnt8_r = '1' then
-			if hcnt(3 downto 0) = X"D" then
-				sprite_buffer_addr <= fg_ram_low_do(7 downto 0);			
-				hcnt8_rr <= '1';
+			if hcnt8_r = '1' then
+				if hcnt(3 downto 0) = X"D" then
+					sprite_buffer_addr <= fg_ram_low_do(7 downto 0);			
+					hcnt8_rr <= '1';
+				else
+					sprite_buffer_addr <= sprite_buffer_addr + '1';
+				end if;	
 			else
-				sprite_buffer_addr <= sprite_buffer_addr + '1';
-			end if;	
-		else
-			if hcnt(7 downto 0) = X"0D" then 
-				sprite_buffer_addr <= (others => '0');
-				hcnt8_rr <= '0';
-			else
-				sprite_buffer_addr <= sprite_buffer_addr + '1';
+				if hcnt(7 downto 0) = X"0D" then 
+					sprite_buffer_addr <= (others => '0');
+					hcnt8_rr <= '0';
+				else
+					sprite_buffer_addr <= sprite_buffer_addr + '1';
+				end if;
 			end if;
-		end if;
-					
+		end if;	
 	end if;	
 end process;
 
@@ -450,27 +451,29 @@ sprite_buffer_addr_flip <= not (sprite_buffer_addr) when hcnt8_rr = '0' and cock
 -- latch and shift foreground and sprite graphics
 process (clock_12)
 begin
-	if rising_edge(clock_12) and clock_6 = '1' then
-		if hcnt(2 downto 0) = "101" then
-			if display_tile = '1' then
-				fg_sp_grphx_1 <= fg_grphx_1_do;
-				fg_sp_grphx_2 <= fg_grphx_2_do;
-				fg_sp_grphx_3 <= fg_grphx_3_do;
-				fg_low_priority <= fg_grphx_addr(10); -- #fg_ram_low_do(7)  
-			else	
-				fg_sp_grphx_1 <= (others =>'0');
-				fg_sp_grphx_2 <= (others =>'0');
-				fg_sp_grphx_3 <= (others =>'0');
+	if rising_edge(clock_12) then
+		if clock_6 = '1' then
+			if hcnt(2 downto 0) = "101" then
+				if display_tile = '1' then
+					fg_sp_grphx_1 <= fg_grphx_1_do;
+					fg_sp_grphx_2 <= fg_grphx_2_do;
+					fg_sp_grphx_3 <= fg_grphx_3_do;
+					fg_low_priority <= fg_grphx_addr(10); -- #fg_ram_low_do(7)  
+				else	
+					fg_sp_grphx_1 <= (others =>'0');
+					fg_sp_grphx_2 <= (others =>'0');
+					fg_sp_grphx_3 <= (others =>'0');
+				end if;
+			elsif cocktail_flip = '0' or hcnt8_rr = '1' then
+				fg_sp_grphx_1 <= '0' & fg_sp_grphx_1(7 downto 1);
+				fg_sp_grphx_2 <= '0' & fg_sp_grphx_2(7 downto 1);
+				fg_sp_grphx_3 <= '0' & fg_sp_grphx_3(7 downto 1);
+			else
+				fg_sp_grphx_1 <= fg_sp_grphx_1(6 downto 0) & '0';
+				fg_sp_grphx_2 <= fg_sp_grphx_2(6 downto 0) & '0';
+				fg_sp_grphx_3 <= fg_sp_grphx_3(6 downto 0) & '0';
 			end if;
-		elsif cocktail_flip = '0' or hcnt8_rr = '1' then
-			fg_sp_grphx_1 <= '0' & fg_sp_grphx_1(7 downto 1);
-			fg_sp_grphx_2 <= '0' & fg_sp_grphx_2(7 downto 1);
-			fg_sp_grphx_3 <= '0' & fg_sp_grphx_3(7 downto 1);
-		else
-			fg_sp_grphx_1 <= fg_sp_grphx_1(6 downto 0) & '0';
-			fg_sp_grphx_2 <= fg_sp_grphx_2(6 downto 0) & '0';
-			fg_sp_grphx_3 <= fg_sp_grphx_3(6 downto 0) & '0';
-		end if;
+		end if;	
 	end if;	
 end process;
 
@@ -484,12 +487,14 @@ sprite_buffer_di <= "000"            when hcnt8_rr = '0' else -- clear ram after
 -- read sprite buffer
 process (clock_12)
 begin
-	if rising_edge(clock_12) and clock_6 = '0' then
-		if hcnt8_rr = '0' then
-			sp_bits_out <= sprite_buffer_do;
-		else
-			sp_bits_out <= "000";
-		end if;
+	if rising_edge(clock_12) then
+		if clock_6 = '0' then
+			if hcnt8_rr = '0' then
+				sp_bits_out <= sprite_buffer_do;
+			else
+				sp_bits_out <= "000";
+			end if;
+		end if;	
 	end if;
 end process;
 
@@ -503,26 +508,29 @@ bg_hcnt(2 downto 0) <= hcnt_flip(2 downto 0);
 
 process (clock_12) 
 begin
-	if rising_edge(clock_12) and clock_6 = '1' then
-	
-		-- M4H latch hcnt bit 3 to 7 (8 pixels delay)
-		if hcnt(2 downto 0) = "111" then 
-			bg_hcnt(7 downto 3) <= hcnt_flip(7 downto 3);
-		end if;
+	if rising_edge(clock_12) then
+		if clock_6 = '1' then
 		
+			-- M4H latch hcnt bit 3 to 7 (8 pixels delay)
+			if hcnt(2 downto 0) = "111" then 
+				bg_hcnt(7 downto 3) <= hcnt_flip(7 downto 3);
+			end if;
+		end if;	
 	end if;
 end process;
 
 -- latch scroll1 & 2 data
 process (clock_12n) 
 begin
-	if rising_edge(clock_12n) and clock_6 = '1' then	
-		if bport_we = '1' then 
-			scroll1 <= cpu_do(3 downto 0);
-		end if;		
-		if bshift_we = '1' then 
-			scroll2 <= cpu_do;
-		end if;		
+	if rising_edge(clock_12n) then
+		if clock_6 = '1' then	
+			if bport_we = '1' then 
+				scroll1 <= cpu_do(3 downto 0);
+			end if;		
+			if bshift_we = '1' then 
+				scroll2 <= cpu_do;
+			end if;		
+		end if;	
 	end if;
 end process;
 
@@ -536,32 +544,36 @@ bg_ram_addr <= cpu_addr(9 downto 0) when cpu_ena = '1' else bg_scan_addr;
 -- manage background rom address
 process (clock_12) 
 begin
-	if rising_edge(clock_12) and clock_6 = '0' then	
-		if bg_scan_hcnt(1 downto 0) = "00" then 
-			bg_grphx_addr <= '1' & vcnt_flip(7) & bg_ram_do & bg_scan_hcnt(3 downto 2) & vcnt_flip(3 downto 0);
-		end if;		
+	if rising_edge(clock_12) then
+		if clock_6 = '0' then	
+			if bg_scan_hcnt(1 downto 0) = "00" then 
+				bg_grphx_addr <= '1' & vcnt_flip(7) & bg_ram_do & bg_scan_hcnt(3 downto 2) & vcnt_flip(3 downto 0);
+			end if;		
+		end if;	
 	end if;
 end process;
 		
 -- latch and shift background graphics
 process (clock_12)
 begin
-	if rising_edge(clock_12) and clock_6 = '1' then
-		if scroll1 = "0000" then
-				bg_grphx_1 <= (others => '0');
-				bg_grphx_2 <= (others => '0');		
-		else	
-			if bg_scan_hcnt(1 downto 0) = "00" then 
-				bg_grphx_1 <= bg_grphx_1_do;
-				bg_grphx_2 <= bg_grphx_2_do(3 downto 0);
-			elsif cocktail_flip = '0' then
-				bg_grphx_1 <= '0' & bg_grphx_1(7 downto 1);
-				bg_grphx_2 <= '0' & bg_grphx_2(3 downto 1);
-			else
-				bg_grphx_1 <= bg_grphx_1(6 downto 0) & '0';
-				bg_grphx_2 <= bg_grphx_2(2 downto 0) & '0';
+	if rising_edge(clock_12) then
+		if clock_6 = '1' then
+			if scroll1 = "0000" then
+					bg_grphx_1 <= (others => '0');
+					bg_grphx_2 <= (others => '0');		
+			else	
+				if bg_scan_hcnt(1 downto 0) = "00" then 
+					bg_grphx_1 <= bg_grphx_1_do;
+					bg_grphx_2 <= bg_grphx_2_do(3 downto 0);
+				elsif cocktail_flip = '0' then
+					bg_grphx_1 <= '0' & bg_grphx_1(7 downto 1);
+					bg_grphx_2 <= '0' & bg_grphx_2(3 downto 1);
+				else
+					bg_grphx_1 <= bg_grphx_1(6 downto 0) & '0';
+					bg_grphx_2 <= bg_grphx_2(2 downto 0) & '0';
+				end if;
 			end if;
-		end if;
+		end if;	
 	end if;	
 end process;
 		
@@ -571,12 +583,13 @@ bg_bits_skew_0 <= bg_grphx_2(0) & bg_grphx_1(4) & bg_grphx_1(0) when cocktail_fl
 -- delay background graphics w.r.t. foreground graphics
 process (clock_12) 
 begin
-	if rising_edge(clock_12) and clock_6 = '1' then
-		bg_bits_skew_1 <= bg_bits_skew_0;
-		bg_bits_skew_2 <= bg_bits_skew_1;
-		bg_bits_skew_3 <= bg_bits_skew_2;
-		bg_bits_skew_4 <= bg_bits_skew_3;
-		bg_bits_skew_5 <= bg_bits_skew_4;
+	if rising_edge(clock_12) then
+		if clock_6 = '1' then
+			bg_bits_skew_1 <= bg_bits_skew_0;
+			bg_bits_skew_2 <= bg_bits_skew_1;
+			bg_bits_skew_3 <= bg_bits_skew_2;
+			bg_bits_skew_4 <= bg_bits_skew_3;
+		end if;	
 	end if;	
 end process;
 		
@@ -588,10 +601,12 @@ palette_addr <= cpu_addr(3 downto 0) when palette_we = '1' else
 -- get palette output
 process (clock_12) 
 begin
-	if rising_edge(clock_12) and clock_6 = '0' then
-		video_r <= not palette_do(2 downto 0);
-		video_g <= not palette_do(5 downto 3);
-		video_b <= not palette_do(7 downto 6);
+	if rising_edge(clock_12) then
+		if clock_6 = '0' then
+			video_r <= not palette_do(2 downto 0);
+			video_g <= not palette_do(5 downto 3);
+			video_b <= not palette_do(7 downto 6);
+		end if;	
 	end if;	
 end process;
 				
