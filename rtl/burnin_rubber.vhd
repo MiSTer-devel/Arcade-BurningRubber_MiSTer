@@ -55,6 +55,7 @@ port
 	start2       : in std_logic;
 	start1       : in std_logic;
 	coin1        : in std_logic;
+	coin2        : in std_logic;
  
 	fire1        : in std_logic;
 	right1       : in std_logic;
@@ -193,6 +194,7 @@ architecture syn of burnin_rubber is
 	-- misc
 	signal raz_nmi_we : std_logic;
 	signal coin1_r : std_logic;
+	signal coin2_r : std_logic;
 	signal sound_req : std_logic;
 	
 	signal romp_cs,roms1_cs,roms2_cs,roms3_cs,romb1_cs,romb2_cs  : std_logic;
@@ -307,7 +309,7 @@ vcnt_flip <= not vcnt when cocktail_flip = '0' else vcnt;
 --dip_sw2 <= "00010110";
 btn_p1 <=  not("000"&fire1 & down1 & up1 & left1 & right1);
 btn_p2 <=  not("000"&fire2 & down2 & up2 & left2 & right2);
-btn_system <= not('0'&coin1&'0'&start2&start1&"000");
+btn_system <= not(coin2&coin1&'0'&start2&start1&"000");
 
 -- misc (coin, nmi, cocktail)
 process (reset,clock_12)
@@ -318,7 +320,8 @@ begin
 	else
 		if rising_edge(clock_12)then
 			coin1_r <= coin1;
-			if coin1_r = '0' and coin1 = '1' then
+			coin2_r <= coin2;
+			if (coin1_r = '0' and coin1 = '1') or (coin2_r = '0' and coin2 = '1')  then
 				cpu_nmi_n <= '0';
 			end if;		
 			if raz_nmi_we = '1' then

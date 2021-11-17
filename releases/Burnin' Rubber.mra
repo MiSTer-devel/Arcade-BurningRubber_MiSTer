@@ -27,7 +27,23 @@
 	<num_buttons>1</num_buttons>
 	<button_names></button_names>
 
-	<switches></switches>
+	<switches default="80,00">
+		<dip bits="0,1"   name="Slot 1 Coinage" ids="1 C/1 Cr,1 C/2 Cr,1 C/3 Cr,2 C/1 Cr"></dip>
+		<dip bits="2,3"   name="Slot 2 Coinage" ids="1 C/1 Cr,1 C/2 Cr,1 C/3 Cr,2 C/1 Cr"></dip>
+		<!-- In original game manual there are separate cocktail switches
+		   - for control panel and screen. There's no support for this in core
+		   - so let's keep this commented out for now.
+		  -->
+		<!--
+			<dip bits="6"      name="Control Panel" ids="Cocktail,Upright"></dip>
+			<dip bits="7"      name="Screen" ids="Cocktail,Upright"></dip>
+		  -->
+		<dip bits="7"     name="Cabinet" ids="Cocktail,Upright"></dip>
+		<dip bits="8"     name="Lives" ids="3,5"></dip>
+		<dip bits="9,10"  name="Bonus" ids="Every 30k,Every 70k,20k only,30k only"></dip>
+		<dip bits="11"    name="Allow Continue" ids="No,Yes"></dip>
+		<dip bits="12"    name="Difficulty" ids="Easy,Hard"></dip>
+	</switches>
 
 	<rom index="1"></rom>
 	<rom index="0" md5="c7d288bc1514495a741b17001e2400a2" zip="brubber.zip">

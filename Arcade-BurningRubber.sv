@@ -207,29 +207,13 @@ localparam CONF_STR = {
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
-	"O8,Lives,3,5;",
-	"O9A,Bonus,Every 30k,Every 70k,20k only, 30konly;",
-	"OB,Allow Continue,Yes,No;",
-	"OF,Difficulty,Easy,Hard;",	
-	"OC,Cabinet,Upright,Cocktail;",	
-	"OD,Hatch,Off,On;",	
-	"OE,Test,Off,On;",	
+	"DIP;",
 	"-;",
 	"R0,Reset;",
 	"J1,Fire,Start 1P,Start 2P,Coin;",
 	"jn,A,Start,Select,R;",
 	"V,v",`BUILD_DATE
 };
-/*
--- dip_sw1    -- cocktail/unkown/unkown/test/coinage_b[2]/coinage_a[2]
--- dip_sw2    -- off/off/off/easy/no_continue/bonus[3]/lives
-dip_sw1 <= "00011111";  
-dip_sw2 <= "00010110";
-
-*/
-wire [7:0] m_dip_sw1={status[12],1'b0,~status[13],~status[14],4'b1111};
-wire [7:0] m_dip_sw2={3'b000,~status[15],~status[11],~status[10:9],~status[8]};
-
 
 ////////////////////   CLOCKS   ///////////////////
 
@@ -266,6 +250,9 @@ wire [15:0] joy = joystick_0 | joystick_1;
 
 wire [21:0] gamma_bus;
 
+// DIP switches
+reg [7:0] dsw[2];
+always @(posedge clk_sys) if (ioctl_wr && (ioctl_index==254) && !ioctl_addr[24:1]) dsw[ioctl_addr[0]] <= ioctl_dout;
 
 hps_io #(.CONF_STR(CONF_STR)) hps_io
 (
@@ -304,7 +291,8 @@ wire m_fire_2 = joy[4];
 
 wire m_start1 = joy[5];
 wire m_start2 = joy[6];
-wire m_coin   = joy[7];
+wire m_coin_1 = joystick_0[7];
+wire m_coin_2 = joystick_1[7];
 
 wire hblank, vblank;
 wire ce_vid;
@@ -345,7 +333,7 @@ burnin_rubber burnin_rubber
 
 	.dn_addr(ioctl_addr[16:0]),
 	.dn_data(ioctl_dout),
-	.dn_wr(ioctl_wr),
+	.dn_wr(ioctl_wr && (ioctl_index==0)),
 
 	.video_ce(ce_vid),
 	.video_r(r),
@@ -361,7 +349,8 @@ burnin_rubber burnin_rubber
 
 	.start2(m_start2),
 	.start1(m_start1),
-	.coin1(m_coin),
+	.coin1(m_coin_1),
+	.coin2(m_coin_2),
 
 	.fire1(m_fire),
 	.right1(m_right),
@@ -375,8 +364,8 @@ burnin_rubber burnin_rubber
 	.down2(m_down_2),
 	.up2(m_up_2),
 	
-	.dip_sw1(m_dip_sw1),
-	.dip_sw2(m_dip_sw2)
+	.dip_sw1(~dsw[0]),
+	.dip_sw2(~(dsw[1] & 8'h1f))
 );
 
 endmodule
