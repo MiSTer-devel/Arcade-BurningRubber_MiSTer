@@ -71,7 +71,16 @@ port
 	dip_sw1      : in std_logic_vector(7 downto 0);
 	dip_sw2      : in std_logic_vector(7 downto 0);
 		
-	dbg_cpu_addr : out std_logic_vector(15 downto 0)
+	dbg_cpu_addr : out std_logic_vector(15 downto 0);
+
+	paused			 : in	 std_logic;
+
+	hs_address	 : in	 std_logic_vector(10 downto 0);
+	hs_data_out	 : out std_logic_vector(7 downto 0);
+	hs_data_in	 : in	 std_logic_vector(7 downto 0);
+	hs_write_enable	 : in std_logic;
+	hs_write_intent	 : in std_logic;
+	hs_read_intent	 : in std_logic
   );
 end burnin_rubber;
 
@@ -112,8 +121,8 @@ architecture syn of burnin_rubber is
 
   
   -- video scan counter
-  signal hcnt   : std_logic_vector(8 downto 0);
-  signal vcnt   : std_logic_vector(8 downto 0);
+  signal hcnt   : std_logic_vector(8 downto 0) := (others => '0');
+  signal vcnt   : std_logic_vector(8 downto 0) := (others => '0');
   signal hsync0 : std_logic;
   signal hsync1 : std_logic;
   signal hsync2 : std_logic;
@@ -199,6 +208,10 @@ architecture syn of burnin_rubber is
 	
 	signal romp_cs,roms1_cs,roms2_cs,roms3_cs,romb1_cs,romb2_cs  : std_logic;
 
+	signal port_a_addr	: std_logic_vector(13 downto 0);
+	signal port_a_data	: std_logic_vector(7 downto 0);
+	signal port_a_write : std_logic;
+
 	
 begin
 
@@ -215,15 +228,11 @@ reset_n <= not reset;
 clock_12n <= not clock_12;
 video_ce <= clock_6;
 
-process (clock_12, reset)
+process (clock_12)
   begin
-	if reset='1' then
-		clock_6 <= '0';
-	else
       if rising_edge(clock_12) then
 			clock_6 <= not clock_6;
 		end if;
-	end if;
 end process;
 
 -------------------
@@ -235,12 +244,8 @@ end process;
 --  hcnt [0..255,256..383] => 384 pixels,  384/6Mhz => 1 line is 64us (15.625KHz)
 --  vcnt [8..255,256..279] => 272 lines, 1 frame is 272 x 64us = 17.41ms (57.44Hz)
 
-process (reset, clock_12)
+process (clock_12)
 begin
-	if reset='1' then
-		hcnt  <= (others => '0');
-		vcnt  <= (others => '0');
-	else 
 		if rising_edge(clock_12) then
 			if clock_6 = '1' then
 				hcnt <= hcnt + '1';
@@ -254,8 +259,6 @@ begin
 				end if;
 			end if;
 		end if;
-
-	end if;
 end process;
 
 hcnt_flip <= hcnt when cocktail_flip = '0' else not hcnt;
@@ -694,7 +697,7 @@ port map
     Res_n       => reset_n,
     Enable      => cpu_ena,
     Clk         => clock_12,
-    Rdy         => '1',
+    Rdy         => not paused,
     Abort_n     => '1',
     IRQ_n       => '1',--cpu_irq_n,
     NMI_n       => cpu_nmi_n,
@@ -721,14 +724,19 @@ romb1_cs <= '1' when dn_addr(15 downto 12) = "1010" else '0';
 romb2_cs <= '1' when dn_addr(15 downto 12) = "1011" else '0';
 
 -- working ram 
-wram : entity work.gen_ram
-generic map( dWidth => 8, aWidth => 11)
+wram : entity work.dpram generic map(11)
 port map(
- clk  => clock_12n,
- we   => wram_we,
- addr => cpu_addr( 10 downto 0),
- d    => cpu_do,
- q    => wram_do
+	clock_a   => clock_12,
+	wren_a    => hs_write_enable,
+	address_a => hs_address,
+	data_a    => hs_data_in,
+  q_a       => hs_data_out,
+
+	clock_b   => clock_12n,
+	wren_b    => wram_we,
+	address_b => cpu_addr( 10 downto 0),
+	data_b    => cpu_do,
+	q_b       => wram_do
 );
 
 -- program rom
@@ -873,7 +881,7 @@ port map
 -- burnin rubber sound part
 burnin_rubber_sound: entity work.burnin_rubber_sound
 port map(
-	clock_12  => clock_12,
+	clock_12  => clock_12 and not paused,
 	reset     => reset,
 	
 	dn_addr   => dn_addr,

@@ -200,17 +200,28 @@ wire [1:0] ar = status[20:19];
 assign VIDEO_ARX = (!ar) ? ((status[2])  ? 8'd4 : 8'd3) : (ar - 1'd1);
 assign VIDEO_ARY = (!ar) ? ((status[2])  ? 8'd3 : 8'd4) : 12'd0;
 
+// Used status bits
+// 00000000001111111111222222222233
+// 01234567890123456789012345678901
+// 0123456789abcdefghijklmnopqrstuv
+//   xxxx             xxxxx         
+
 `include "build_id.v" 
 localparam CONF_STR = {
 	"A.BRUBBR;;",
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+	"h1ON,Autosave Hiscores,Off,On;",
 	"-;",
 	"DIP;",
 	"-;",
+	"P1,Pause options;",
+	"P1OL,Pause when OSD is open,On,Off;",
+	"P1OM,Dim video after 10s,On,Off;",
+	"-;",
 	"R0,Reset;",
-	"J1,Fire,Start 1P,Start 2P,Coin;",
+	"J1,Fire,Start 1P,Start 2P,Coin,Pause;",
 	"jn,A,Start,Select,R;",
 	"V,v",`BUILD_DATE
 };
@@ -239,9 +250,12 @@ wire        direct_video;
 
 
 wire        ioctl_download;
+wire        ioctl_upload;
+wire        ioctl_upload_req;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
+wire  [7:0] ioctl_din;
 wire  [7:0] ioctl_index;
 
 
@@ -254,6 +268,42 @@ wire [21:0] gamma_bus;
 reg [7:0] dsw[2];
 always @(posedge clk_sys) if (ioctl_wr && (ioctl_index==254) && !ioctl_addr[24:1]) dsw[ioctl_addr[0]] <= ioctl_dout;
 
+// HISCORE SYSTEM
+// --------------
+
+wire [10:0]hs_address;
+wire [7:0] hs_data_in;
+wire [7:0] hs_data_out;
+wire hs_write_enable;
+wire hs_write_intent;
+wire hs_read_intent;
+wire hs_pause;
+wire hs_configured;
+
+hiscore #(
+	.HS_ADDRESSWIDTH(11),
+	.HS_SCOREWIDTH(10),			// 624 bytes total
+	.HS_CONFIGINDEX(5),
+	.HS_DUMPINDEX(6),
+	.CFG_ADDRESSWIDTH(2),		// 3 config lines
+	.CFG_LENGTHWIDTH(2)     // 620 bytes in the biggest section
+) hi (
+	.*,
+	.clk(clk_sys),
+	.paused(pause_cpu),
+	.autosave(status[23]),
+	.ram_address(hs_address),
+	.data_from_ram(hs_data_out),
+	.data_to_ram(hs_data_in),
+	.data_from_hps(ioctl_dout),
+	.data_to_hps(ioctl_din),
+	.ram_write(hs_write_enable),
+	.ram_intent_read(hs_read_intent),
+	.ram_intent_write(hs_write_intent),
+	.pause_cpu(hs_pause),
+	.configured(hs_configured)
+);
+
 hps_io #(.CONF_STR(CONF_STR)) hps_io
 (
 	.clk_sys(clk_sys),
@@ -261,16 +311,19 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.buttons(buttons),
 	.status(status),
-	.status_menumask(direct_video),
+	.status_menumask({hs_configured,direct_video}),
 	.forced_scandoubler(forced_scandoubler),
 	.gamma_bus(gamma_bus),
 	.direct_video(direct_video),
 
 
 	.ioctl_download(ioctl_download),
+	.ioctl_upload(ioctl_upload),
+	.ioctl_upload_req(ioctl_upload_req),
 	.ioctl_wr(ioctl_wr),
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_dout),
+	.ioctl_din(ioctl_din),
 	.ioctl_index(ioctl_index),
 
 	.joystick_0(joystick_0),
@@ -293,6 +346,22 @@ wire m_start1 = joy[5];
 wire m_start2 = joy[6];
 wire m_coin_1 = joystick_0[7];
 wire m_coin_2 = joystick_1[7];
+wire m_pause  = joy[8];
+
+// PAUSE SYSTEM
+wire pause_cpu;
+
+wire [7:0] rgb_out;
+
+wire reset = RESET | status[0] |  buttons[1] | ioctl_download;
+
+pause #(3,3,2,12) pause (
+  .*,
+  .reset(reset),
+  .user_button(m_pause),
+  .pause_request(hs_pause),
+  .options(~status[22:21])
+);
 
 wire hblank, vblank;
 wire ce_vid;
@@ -311,7 +380,7 @@ arcade_video #(253,8) arcade_video
 	.clk_video(clk_48),
 	.ce_pix(ce_vid),
 
-	.RGB_in({r,g,b}),
+	.RGB_in(rgb_out),
 	.HBlank(hblank),
 	.VBlank(vblank),
 	.HSync(hs),
@@ -329,7 +398,7 @@ assign AUDIO_S = 0;
 burnin_rubber burnin_rubber
 (
 	.clock_12(clk_sys),
-	.reset(RESET | status[0] |  buttons[1] | ioctl_download),
+	.reset(reset),
 
 	.dn_addr(ioctl_addr[16:0]),
 	.dn_data(ioctl_dout),
@@ -365,7 +434,16 @@ burnin_rubber burnin_rubber
 	.up2(m_up_2),
 	
 	.dip_sw1(~dsw[0]),
-	.dip_sw2(~(dsw[1] & 8'h1f))
+	.dip_sw2(~(dsw[1] & 8'h1f)),
+
+  .paused(pause_cpu),
+
+  .hs_data_out(hs_data_out),
+  .hs_data_in(hs_data_in),
+  .hs_write_enable(hs_write_enable),
+  .hs_write_intent(hs_write_intent),
+  .hs_read_intent(hs_read_intent),
+  .hs_address(hs_address)
 );
 
 endmodule
