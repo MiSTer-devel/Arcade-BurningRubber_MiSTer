@@ -34,6 +34,7 @@ port
 (
 	clock_12     : in std_logic;
 	reset        : in std_logic;
+	flip         : in std_logic;
 	 
 	dn_addr      : in  std_logic_vector(15 downto 0);
 	dn_data      : in  std_logic_vector(7 downto 0);
@@ -129,6 +130,7 @@ architecture syn of burnin_rubber is
   signal csync  : std_logic;
   signal hblank : std_logic;
   signal vblank : std_logic;
+  signal combined_flip : std_logic;
 
   signal hcnt_flip : std_logic_vector(8 downto 0);
   signal vcnt_flip : std_logic_vector(8 downto 0);
@@ -224,6 +226,10 @@ begin
 --	end if;		
 --end process;
 
+combined_flip <= cocktail_flip xor flip;
+hcnt_flip <= hcnt when combined_flip = '0' else not hcnt;
+vcnt_flip <= not vcnt when combined_flip = '0' else vcnt;
+
 reset_n <= not reset;
 clock_12n <= not clock_12;
 video_ce <= clock_6;
@@ -261,9 +267,6 @@ begin
 		end if;
 end process;
 
-hcnt_flip <= hcnt when cocktail_flip = '0' else not hcnt;
-vcnt_flip <= not vcnt when cocktail_flip = '0' else vcnt;
-  
 --static ADDRESS_MAP_START( bnj_map, AS_PROGRAM, 8, btime_state )
 --	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_SHARE("rambase")
 --	AM_RANGE(0x1000, 0x1000) AM_READ_PORT("DSW1")
@@ -452,7 +455,8 @@ begin
 	end if;	
 end process;
 
-sprite_buffer_addr_flip <= not (sprite_buffer_addr) when hcnt8_rr = '0' and cocktail_flip = '1' else sprite_buffer_addr;
+sprite_buffer_addr_flip <= not (sprite_buffer_addr) when hcnt8_rr = '0' and combined_flip = '1' else sprite_buffer_addr;
+
 
 -- latch and shift foreground and sprite graphics
 process (clock_12)
@@ -470,7 +474,7 @@ begin
 					fg_sp_grphx_2 <= (others =>'0');
 					fg_sp_grphx_3 <= (others =>'0');
 				end if;
-			elsif cocktail_flip = '0' or hcnt8_rr = '1' then
+			elsif combined_flip = '0' or hcnt8_rr = '1' then
 				fg_sp_grphx_1 <= '0' & fg_sp_grphx_1(7 downto 1);
 				fg_sp_grphx_2 <= '0' & fg_sp_grphx_2(7 downto 1);
 				fg_sp_grphx_3 <= '0' & fg_sp_grphx_3(7 downto 1);
@@ -483,7 +487,7 @@ begin
 	end if;	
 end process;
 
-fg_sp_bits <= fg_sp_grphx_3(0) & fg_sp_grphx_2(0) & fg_sp_grphx_1(0) when cocktail_flip = '0' or hcnt8_rr = '1' else
+fg_sp_bits <= fg_sp_grphx_3(0) & fg_sp_grphx_2(0) & fg_sp_grphx_1(0) when combined_flip = '0' or hcnt8_rr = '1' else
 				  fg_sp_grphx_3(7) & fg_sp_grphx_2(7) & fg_sp_grphx_1(7);
 				  
 -- data to sprite buffer
@@ -571,7 +575,7 @@ begin
 				if bg_scan_hcnt(1 downto 0) = "00" then 
 					bg_grphx_1 <= bg_grphx_1_do;
 					bg_grphx_2 <= bg_grphx_2_do(3 downto 0);
-				elsif cocktail_flip = '0' then
+				elsif combined_flip = '0' then
 					bg_grphx_1 <= '0' & bg_grphx_1(7 downto 1);
 					bg_grphx_2 <= '0' & bg_grphx_2(3 downto 1);
 				else
@@ -583,7 +587,7 @@ begin
 	end if;	
 end process;
 		
-bg_bits_skew_0 <= bg_grphx_2(0) & bg_grphx_1(4) & bg_grphx_1(0) when cocktail_flip = '0' else
+bg_bits_skew_0 <= bg_grphx_2(0) & bg_grphx_1(4) & bg_grphx_1(0) when combined_flip = '0' else
 			         bg_grphx_2(3) & bg_grphx_1(7) & bg_grphx_1(3);
 
 -- delay background graphics w.r.t. foreground graphics
