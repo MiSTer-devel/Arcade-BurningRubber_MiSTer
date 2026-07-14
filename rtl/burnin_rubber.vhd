@@ -412,9 +412,9 @@ begin
 			end if;
 			if  hcnt(3 downto 0) = "1000" then
 				if sprite_attr(1) = '0' then
-					sprite_line <=  vcnt_flip(7 downto 0) - 1 + fg_ram_low_do(7 downto 0);
+					sprite_line <= vcnt_flip(7 downto 0) + fg_ram_low_do(7 downto 0);
 				else
-					sprite_line <= (vcnt_flip(7 downto 0) - 1 + fg_ram_low_do(7 downto 0)) xor X"0F"; -- flip V
+					sprite_line <= (vcnt_flip(7 downto 0) + fg_ram_low_do(7 downto 0)) xor X"0F";
 				end if;
 			end if;
 			
@@ -422,7 +422,7 @@ begin
 				hcnt8_r <= hcnt(8);
 				fg_grphx_addr_early <= fg_ram_high_do & fg_ram_low_do & vcnt_flip(2 downto 0); -- fg_ram_low_do(7) = '1' => low priority foreground
 				if hcnt8_r = '1' then
-					fg_grphx_addr <= sprite_tile & not (sprite_attr(2) xor hcnt_flip(3) xor cocktail_flip) & sprite_line(3 downto 0);
+					fg_grphx_addr <= sprite_tile & not (sprite_attr(2) xor hcnt_flip(3) xor combined_flip) & sprite_line(3 downto 0);
 					if hcnt(3) = '1' then
 						if (sprite_line(7 downto 4) = "1111") and (sprite_attr(0) = '1') then
 							display_tile <= '1';
@@ -455,7 +455,7 @@ begin
 	end if;	
 end process;
 
-sprite_buffer_addr_flip <= not (sprite_buffer_addr) when hcnt8_rr = '0' and combined_flip = '1' else sprite_buffer_addr;
+sprite_buffer_addr_flip <= not (sprite_buffer_addr) when hcnt8_rr = '1' and combined_flip = '1' else sprite_buffer_addr;
 
 
 -- latch and shift foreground and sprite graphics
